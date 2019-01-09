@@ -101,8 +101,6 @@ class Agent():
         next_action_values = self.qnetwork_target(next_states).max(1)[0].unsqueeze(1)
         q_targets = rewards + (gamma * next_action_values * (1 - dones))
 
-        pdb.set_trace()
-
         # Compute loss, backprop and update weights
         self.optimizer.zero_grad()
         loss = F.mse_loss(q_estimates, q_targets)
