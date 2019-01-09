@@ -41,8 +41,6 @@ Finally, we select our agent's actions according to an ε-greedy policy, with ε
 
 ## Results
 
-A plot of rewards per episode is included to illustrate that the agent is able to receive an average reward (over 100 episodes) of at least +13. The submission reports the number of episodes needed to solve the environment.
-
 Solving the environment requires reaching an average score of 13 over 100 episodes. Our agent reached this target after 525 episodes. A plot of the rewards per episode is included below.
 
 ![Reward Graph of DQN](https://github.com/chris838/banana-collector/blob/master/results/dqn_64_64.png)
@@ -56,6 +54,10 @@ Inspired by results from this paper https://arxiv.org/pdf/1509.06461.pdf, Double
 This is particularly easy to implement in our case, since we already have two versions of the model (our target and local models) which should be sufficiently different from one another.
 
 ## Results
+
+Our agent solved the environment after 482 episodes. Although a minor improvement, it would be worth running this test multiple times since the difference was small and possible not statistically significant.
+
+A plot of the rewards per episode is included below.
 
 ![Reward Graph of Double DQN](https://github.com/chris838/banana-collector/blob/master/results/double_dqn_64_64.png)
 
@@ -72,13 +74,17 @@ In the paper, the author recommends using a sum-tree data structure to generate 
 
 ## Results
 
+Our agent solved the environment after 538 episodes. This was almost identical to the original agent. It's not clear that prioritised replay provided any advantage, possibly because the task itself is quite simple compared to the Atari games that the algorithm was designed for.
+
+A plot of the rewards per episode is included below.
+
 ![Reward Graph of Prioritised Replay](https://github.com/chris838/banana-collector/blob/master/results/prioritised_dqn_64_64.png)
 
 
 
 # Ideas for Future Work
 
-Neither the prioritised replay, nor the double DQN method appeared to have a significant effect on the learning rate, although more tests would need to be performed to confirm this. In particular, prioritised has a number of sample parameters that could be adjusted. It might be prudent to re-implement prioritised replay using sum-trees, as this would permit running more tests in a shorter time.
+Neither the prioritised replay, nor the double DQN method appeared to have a significant effect on the learning rate, although more tests would need to be performed to confirm this. In particular, prioritised replay has a number of sample parameters that could be adjusted. It might be prudent to re-implement prioritised replay using sum-trees, as this would permit running more tests in a shorter time.
 
 The rainbow paper https://arxiv.org/pdf/1710.02298.pdf compares a number of additional extensions to DQN that have proved successful in improving learning rates. We might implement one or more of these and test their effects.
 
