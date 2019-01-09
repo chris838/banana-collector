@@ -2,6 +2,7 @@ import numpy as np
 import random
 import pdb
 from collections import namedtuple, deque
+from recordclass import recordclass
 
 from model import QNetwork
 
@@ -10,12 +11,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 64         # minibatch size
-GAMMA = 0.99            # discount factor
-TAU = 1e-3              # for soft update of target parameters
-LR = 5e-4               # learning rate
-UPDATE_EVERY = 4        # how often to update the network
+BUFFER_SIZE = int(1e5)      # replay buffer size
+BATCH_SIZE = 64             # minibatch size
+GAMMA = 0.99                # discount factor
+TAU = 1e-3                  # for soft update of target parameters
+LR = 4 * 5e-4               # learning rate
+UPDATE_EVERY = 4            # how often to update the network
+PRIORITISATION = 1 # 0.6        # 0 for uniform sampling of replay buffer
+PRIORITY_OFFSET = 0 # int(1e-2) # Small number to ensure we visit edge-case transitions
+IMPORTANCE_SAMPLING = 1 # 0.4   # 0 for no importance sample weighting
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -86,10 +90,10 @@ class Agent():
 
         Params
         ======
-            experiences (Tuple[torch.Variable]): tuple of (s, a, r, s', done) tuples
+            experiences (Tuple[torch.Variable]): tuple of (e, s, a, r, s', done) tuples
             gamma (float): discount factor
         """
-        states, actions, rewards, next_states, dones = experiences
+        es, states, actions, rewards, next_states, dones, weights = experiences
 
         # Compute estimated outputs (action values) from the current network
         # Use gather to only select output neuron for the chosen action
@@ -101,11 +105,18 @@ class Agent():
         next_action_values = self.qnetwork_target(next_states).max(1)[0].unsqueeze(1)
         q_targets = rewards + (gamma * next_action_values * (1 - dones))
 
-        pdb.set_trace()
+        # Compute importance sampling ratio
+        probabilities = weights / self.memory.weight_sum()
+        is_ratios = ((1/len(self.memory)) * (1/probabilities)) ** IMPORTANCE_SAMPLING
+
+        # Compute TD error and update the experience priority
+        #td_errors = q_targets - q_estimates
+        #for e, td_error in zip(es, td_errors):
+        #    e.weight = (td_error.item() + PRIORITY_OFFSET) ** PRIORITISATION
 
         # Compute loss, backprop and update weights
         self.optimizer.zero_grad()
-        loss = F.mse_loss(q_estimates, q_targets)
+        loss = F.mse_loss(is_ratios * q_estimates, is_ratios * q_targets)
         loss.backward()
         self.optimizer.step()
 
@@ -143,18 +154,33 @@ class ReplayBuffer:
         self.action_size = action_size
         self.memory = deque(maxlen=buffer_size)
         self.batch_size = batch_size
-        self.experience = namedtuple("Experience", field_names=[
-                                     "state", "action", "reward", "next_state", "done"])
+        self.experience = recordclass("Experience", field_names=[
+                                     "state", "action", "reward", "next_state", "done", "weight"])
         self.seed = random.seed(seed)
 
     def add(self, state, action, reward, next_state, done):
+
         """Add a new experience to memory."""
-        e = self.experience(state, action, reward, next_state, done)
+        priority = self.weight_max() ** PRIORITISATION
+        e = self.experience(state, action, reward, next_state, done, priority)
         self.memory.append(e)
+
+    def weight_sum(self):
+        return sum([e.weight for e in self.memory])
+
+    def weight_max(self):
+        if len(self.memory) == 0:
+            return 1
+        return max([e.weight for e in self.memory])
 
     def sample(self):
         """Randomly sample a batch of experiences from memory."""
-        experiences = random.sample(self.memory, k=self.batch_size)
+
+        # Calculate the sample probabilities, based on experience priority
+        weights = [e.weight for e in self.memory]
+
+        # Sample
+        experiences = random.choices(self.memory, k=self.batch_size, weights=weights)
 
         states = torch.from_numpy(
             np.vstack([e.state for e in experiences if e is not None])).float().to(device)
@@ -166,8 +192,10 @@ class ReplayBuffer:
             [e.next_state for e in experiences if e is not None])).float().to(device)
         dones = torch.from_numpy(np.vstack(
             [e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
+        weights = torch.from_numpy(
+            np.vstack([e.weight for e in experiences if e is not None])).float().to(device)
 
-        return (states, actions, rewards, next_states, dones)
+        return (experiences, states, actions, rewards, next_states, dones, weights)
 
     def __len__(self):
         """Return the current size of internal memory."""
