@@ -47,6 +47,9 @@ A plot of rewards per episode is included to illustrate that the agent is able t
 
 Solving the environment requires reaching an average score of 13 over 100 episodes. Our agent reached this target after 525 episodes. A plot of the rewards per episode is included below.
 
+![Reward Graph of DQN](https://github.com/chris838/banana-collector/blob/master/results/dqn_64_64.png)
+
+
 
 ### Double-DQN
 
@@ -54,12 +57,18 @@ Solving the environment requires reaching an average score of 13 over 100 episod
 
 #### Results
 
+![Reward Graph of Double DQN](https://github.com/chris838/banana-collector/blob/master/results/double_dqn_64_64.png)
+
+
 
 ### Prioritised Replay
 
 #### Algorithm
 
 #### Results
+
+![Reward Graph of Prioritised Replay](https://github.com/chris838/banana-collector/blob/master/results/prioritised_dqn_64_64.png)
+
 
 
 # Ideas for Future Work
